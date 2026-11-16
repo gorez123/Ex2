@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SmartClass — KISS Classroom Assistant</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans">
+  <!-- Top Navbar -->
+  <header class="bg-slate-900 border-b border-slate-800 px-4 py-3 sticky top-0 z-10">
+    <div class="max-w-5xl mx-auto flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-2">
+        <span class="text-xl font-bold text-indigo-400">SmartClass</span>
+        <span id="sessionBadge" class="text-xs bg-slate-800 text-slate-300 px-2.5 py-1 rounded-full">Loading...</span>
+      </div>
+      <div class="flex bg-slate-800 p-1 rounded-lg text-sm">
+        <button id="tabStudent" onclick="switchRole('student')" class="px-3 py-1.5 rounded-md bg-indigo-600 text-white font-medium">Student Mobile</button>
+        <button id="tabLecturer" onclick="switchRole('lecturer')" class="px-3 py-1.5 rounded-md text-slate-300 hover:text-white">Lecturer Dashboard</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto p-4 space-y-6">
+    <!-- ==================== STUDENT VIEW ==================== -->
+    <section id="studentView" class="max-w-md mx-auto space-y-5">
+      <!-- 1. Quick Check-In -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
+        <h2 class="text-lg font-semibold text-indigo-300">1. Quick Attendance Check-In</h2>
+        <p class="text-xs text-slate-400">Enter your university email, student ID, or full name from the course roster.</p>
+        <input id="checkinInput" type="text" placeholder="e.g. guy@ariel.ac.il or name..." class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500" />
+        <button onclick="submitCheckIn()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2 rounded-lg text-sm transition">Check In Now</button>
+        <p id="checkinStatus" class="text-xs font-medium"></p>
+      </div>
+
+      <!-- 2. Live Classroom Poll -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
+        <h2 class="text-lg font-semibold text-emerald-300">2. Live Classroom Poll</h2>
+        <div id="studentPollContainer" class="text-sm text-slate-400">No active poll right now.</div>
+      </div>
+
+      <!-- 3. Real-Time Feedback -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
+        <h2 class="text-lg font-semibold text-amber-300">3. Ask or Suggest (Live Feed)</h2>
+        <input id="feedbackAuthor" type="text" placeholder="Your name (optional)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm" />
+        <textarea id="feedbackText" rows="2" placeholder="Question or pacing feedback..." class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm"></textarea>
+        <label class="flex items-center gap-2 text-xs text-slate-400">
+          <input id="feedbackAnon" type="checkbox" class="rounded bg-slate-800" /> Post anonymously
+        </label>
+        <button onclick="submitFeedback()" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-medium py-2 rounded-lg text-sm transition">Send Feedback</button>
+      </div>
+    </section>
+
+    <!-- ==================== LECTURER VIEW ==================== -->
+    <section id="lecturerView" class="hidden space-y-6">
+      <!-- Top Metrics & Photo Verification -->
+      <div class="grid md:grid-cols-2 gap-5">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
+          <div class="flex justify-between items-center">
+            <h2 class="text-lg font-semibold text-indigo-300">Hybrid Attendance & Vision Count</h2>
+            <a href="/api/attendance/export" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg">Export .XLSX</a>
+          </div>
+          <div class="grid grid-cols-3 gap-2 text-center">
+            <div class="bg-slate-800 p-3 rounded-lg">
+              <div id="statRoster" class="text-xl font-bold text-slate-200">0</div>
+              <div class="text-xs text-slate-400">Enrolled</div>
+            </div>
+            <div class="bg-slate-800 p-3 rounded-lg">
+              <div id="statDigital" class="text-xl font-bold text-indigo-400">0</div>
+              <div class="text-xs text-slate-400">Checked In</div>
+            </div>
+            <div class="bg-slate-800 p-3 rounded-lg">
+              <div id="statPhoto" class="text-xl font-bold text-emerald-400">-</div>
+              <div class="text-xs text-slate-400">Photo AI Count</div>
+            </div>
+          </div>
+          <p id="visionNote" class="text-xs text-slate-400 bg-slate-800/60 p-2.5 rounded-lg">Upload a classroom photo to verify headcount with Gemini Vision.</p>
+          <div class="flex gap-2">
+            <input id="photoInput" type="file" accept="image/*" class="text-xs text-slate-300 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-indigo-600 file:text-white" />
+            <button onclick="uploadPhoto()" class="bg-indigo-600 hover:bg-indigo-500 px-3 py-1.5 rounded-lg text-xs font-medium shrink-0">Count Photo</button>
+          </div>
+          <div id="recentCheckins" class="text-xs text-slate-400 space-y-1 max-h-28 overflow-y-auto"></div>
+        </div>
+
+        <!-- Quick Poll & Live Student Feed -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
+          <h2 class="text-lg font-semibold text-emerald-300">On-the-Spot Poll & Live Feedback</h2>
+          <div class="space-y-2">
+            <input id="pollQuestion" type="text" placeholder="Quick question (e.g., Clear on SOLID?)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm" />
+            <input id="pollOptions" type="text" value="Yes, clear, Partially, Need another example" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-300" />
+            <div class="flex gap-2">
+              <button onclick="launchPoll()" class="bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 rounded-lg text-xs font-medium">Launch Poll</button>
+              <button onclick="closePoll()" class="bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg text-xs font-medium">Close Poll</button>
+            </div>
+          </div>
+          <div id="lecturerPollResults" class="text-xs text-slate-300 space-y-1"></div>
+          <hr class="border-slate-800" />
+          <div class="text-xs font-semibold text-amber-300">Student Live Feed:</div>
+          <div id="lecturerFeedbackList" class="space-y-2 max-h-36 overflow-y-auto text-xs"></div>
+        </div>
+      </div>
+
+      <!-- AI Modules: Video/Lecture Summarizer & Homework Reviewer -->
+      <div class="grid md:grid-cols-2 gap-5">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
+          <h2 class="text-base font-semibold text-purple-300">AI Lecture Recording / Transcript Summarizer</h2>
+          <textarea id="lectureInput" rows="4" placeholder="Paste lecture transcript or notes from m21.mp4..." class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs"></textarea>
+          <button onclick="runSummarize()" class="bg-purple-600 hover:bg-purple-500 px-4 py-1.5 rounded-lg text-xs font-medium">Generate Study Summary</button>
+          <pre id="summaryOutput" class="whitespace-pre-wrap text-xs text-slate-300 bg-slate-950 p-3 rounded-lg max-h-48 overflow-y-auto hidden"></pre>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
+          <h2 class="text-base font-semibold text-cyan-300">LLM Homework & Peer-Comparison Reviewer</h2>
+          <input id="hwRubric" type="text" value="Check OOP design, SOLID principles, KISS compliance, and edge-case handling." class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs" />
+          <textarea id="hwCodeInput" rows="3" placeholder="Paste GitHub URL or student source code snippet..." class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs"></textarea>
+          <button onclick="runHomeworkReview()" class="bg-cyan-600 hover:bg-cyan-500 px-4 py-1.5 rounded-lg text-xs font-medium">Run AI Code Review</button>
+          <pre id="hwOutput" class="whitespace-pre-wrap text-xs text-slate-300 bg-slate-950 p-3 rounded-lg max-h-48 overflow-y-auto hidden"></pre>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    function switchRole(role) {
+      const isStudent = role === 'student';
+      document.getElementById('studentView').classList.toggle('hidden', !isStudent);
+      document.getElementById('lecturerView').classList.toggle('hidden', isStudent);
+      document.getElementById('tabStudent').className = isStudent ? 'px-3 py-1.5 rounded-md bg-indigo-600 text-white font-medium' : 'px-3 py-1.5 rounded-md text-slate-300';
+      document.getElementById('tabLecturer').className = !isStudent ? 'px-3 py-1.5 rounded-md bg-indigo-600 text-white font-medium' : 'px-3 py-1.5 rounded-md text-slate-300';
+    }
+
+    async function refreshState() {
+      const res = await fetch('/api/state');
+      const data = await res.json();
+      document.getElementById('sessionBadge').textContent = `${data.session.session_id} • ${data.session.title}`;
+      document.getElementById('statRoster').textContent = data.roster_size;
+      document.getElementById('statDigital').textContent = data.session.digital_count;
+      document.getElementById('statPhoto').textContent = data.session.photo_headcount ?? '-';
+      if (data.session.photo_note) {
+        const diff = data.session.discrepancy;
+        document.getElementById('visionNote').textContent = `${data.session.photo_note} | Discrepancy (Photo - Digital): ${diff}`;
+      }
+
+      document.getElementById('recentCheckins').innerHTML = data.session.recent_checkins
+        .map(r => `<div class="flex justify-between bg-slate-800/50 px-2 py-1 rounded"><span>${r.student_name}</span><span>${r.timestamp}</span></div>`).join('');
+
+      // Polls
+      const sp = document.getElementById('studentPollContainer');
+      const lp = document.getElementById('lecturerPollResults');
+      if (data.poll && data.poll.is_open) {
+        sp.innerHTML = `<div class="font-medium text-white mb-2">${data.poll.question}</div>` +
+          data.poll.results.map((opt, idx) => `<button onclick="castVote(${idx})" class="w-full text-left bg-slate-800 hover:bg-emerald-700 px-3 py-2 rounded-lg mb-1.5 text-xs text-white transition">${opt.option}</button>`).join('');
+      } else {
+        sp.textContent = data.poll ? `Poll closed: "${data.poll.question}"` : 'No active poll right now.';
+      }
+      lp.innerHTML = data.poll
+        ? `<div class="font-semibold">${data.poll.question} (${data.poll.total_votes} votes)</div>` +
+          data.poll.results.map(r => `<div>• ${r.option}: <b>${r.count}</b></div>`).join('')
+        : 'No poll launched yet.';
+
+      // Feedback
+      document.getElementById('lecturerFeedbackList').innerHTML = data.feedback.length
+        ? data.feedback.map(m => `<div class="bg-slate-800 p-2 rounded"><span class="text-amber-300 font-semibold">${m.author}</span> (${m.created_at}): ${m.content}</div>`).join('')
+        : '<div class="text-slate-500">No messages yet.</div>';
+    }
+
+    async function submitCheckIn() {
+      const identifier = document.getElementById('checkinInput').value;
+      const statusEl = document.getElementById('checkinStatus');
+      const res = await fetch('/api/checkin', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ identifier })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        statusEl.className = 'text-xs font-medium text-emerald-400';
+        statusEl.textContent = `Checked in: ${data.record.student_name} at ${data.record.timestamp}`;
+        refreshState();
+      } else {
+        statusEl.className = 'text-xs font-medium text-rose-400';
+        statusEl.textContent = data.detail;
+      }
+    }
+
+    async function uploadPhoto() {
+      const file = document.getElementById('photoInput').files[0];
+      if (!file) return alert('Select a classroom photo first.');
+      document.getElementById('visionNote').textContent = 'Analyzing classroom photo with Gemini Vision...';
+      const fd = new FormData();
+      fd.append('file', file);
+      await fetch('/api/attendance/photo', { method: 'POST', body: fd });
+      refreshState();
+    }
+
+    async function launchPoll() {
+      const question = document.getElementById('pollQuestion').value;
+      const options = document.getElementById('pollOptions').value.split(',');
+      await fetch('/api/polls', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ question, options })
+      });
+      refreshState();
+    }
+
+    async function closePoll() {
+      await fetch('/api/polls/close', { method: 'POST' });
+      refreshState();
+    }
+
+    async function castVote(option_index) {
+      const student_id = document.getElementById('checkinInput').value || 'anon_' + Math.random();
+      await fetch('/api/polls/vote', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ student_id, option_index })
+      });
+      alert('Vote recorded!');
+      refreshState();
+    }
+
+    async function submitFeedback() {
+      const author = document.getElementById('feedbackAuthor').value;
+      const content = document.getElementById('feedbackText').value;
+      const is_anonymous = document.getElementById('feedbackAnon').checked;
+      await fetch('/api/feedback', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ author, content, is_anonymous })
+      });
+      document.getElementById('feedbackText').value = '';
+      refreshState();
+    }
+
+    async function runSummarize() {
+      const content = document.getElementById('lectureInput').value;
+      const out = document.getElementById('summaryOutput');
+      out.classList.remove('hidden');
+      out.textContent = 'Generating summary with Gemini...';
+      const res = await fetch('/api/ai/summarize', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ content })
+      });
+      const data = await res.json();
+      out.textContent = data.summary;
+    }
+
+    async function runHomeworkReview() {
+      const submission = document.getElementById('hwCodeInput').value;
+      const rubric = document.getElementById('hwRubric').value;
+      const out = document.getElementById('hwOutput');
+      out.classList.remove('hidden');
+      out.textContent = 'Analyzing submission with Gemini...';
+      const res = await fetch('/api/ai/review-homework', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ submission, rubric })
+      });
+      const data = await res.json();
+      out.textContent = data.review;
+    }
+
+    refreshState();
+    setInterval(refreshState, 5000);
+  </script>
+</body>
+</html>
