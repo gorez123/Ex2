@@ -125,15 +125,17 @@ class AttendanceManager:
             ws = wb.active
             headers = [str(c.value or "").strip() for c in next(ws.iter_rows(min_row=1, max_row=1))]
             for r in ws.iter_rows(min_row=2, values_only=True):
-                rows.append(dict(zip(headers, r)))
+                if any(r):
+                    rows.append(dict(zip(headers, r)))
 
         for idx, row in enumerate(rows, start=1):
             norm = {str(k).lower(): str(v or "").strip() for k, v in row.items()}
-            email = next((v for k, v in norm.items() if "mail" in k and "@" in v), f"student{idx}@ariel.ac.il")
+            # תופס כל עמודה שיש בה @ (עובד גם כשהכותרת בעברית כמו 'כתובת דוא"ל')
+            email = next((v for v in norm.values() if "@" in v), f"student{idx}@ariel.ac.il")
             first = next((v for k, v in norm.items() if "first" in k or "פרטי" in k), "")
             last = next((v for k, v in norm.items() if "last" in k or "משפחה" in k), "")
             full = f"{first} {last}".strip() or next((v for k, v in norm.items() if "name" in k or "שם" in k), f"Student {idx}")
-            sid_raw = next((v for k, v in norm.items() if "id" in k and v.isdigit()), str(1000 + idx))
+            sid_raw = next((v for k, v in norm.items() if ("id" in k or "זהות" in k) and v.isdigit()), str(1000 + idx))
             group = next((v for k, v in norm.items() if "group" in k or "קבוצה" in k), "Course 130158")
             self.roster[email.lower()] = Student(id=int(sid_raw), full_name=full, email=email, group=group)
         return len(self.roster)
