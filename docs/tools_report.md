@@ -12,17 +12,17 @@ In accordance with the KISS (Keep It Simple, Stupid) and "compose rather than bu
 ## 2. Feature-by-Feature Tool Evaluation & Benchmarks
 
 ### Feature 1: Automated Attendance & Classroom Headcount (Core Feature)
-We tested two computer vision approaches on the classroom photo (`26` actual students) alongside a lightweight web check-in mechanism:
+We benchmarked two computer vision approaches locally on the classroom photo (`samples/class_photo.jpeg`) alongside a lightweight web check-in mechanism:
 
-1. **Classical Computer Vision — OpenCV Haar Cascade (`haarcascade_frontalface_default.xml`)**
-   * **Real-Life Test Result:** Detected only **6 out of 26 students** (~23% recall).
-   * **Failure Analysis:** Classical feature-based detectors fail heavily in lecture halls due to desk occlusions, side/downward head angles (students looking at laptops), distance in back rows, and overhead fluorescent lighting.
-   * **Artifact:** Saved output bounding-box image in `/samples/haar_result.jpg`.
-2. **Multimodal Vision-LLM — Gemini 2.5 Flash (`google-genai` SDK)**
-   * **Real-Life Test Result:** Accurately identifies classroom context, handles partial occlusion behind desks/laptops, and estimates **26/26 students** across multiple angles without requiring custom model training or heavy GPU dependencies.
-3. **Student Self Check-In & Spreadsheet Export — FastAPI + Pandas/OpenPyXL**
-   * **Real-Life Test Result:** Tested parsing `courseid_130158_participants` (102 records) and generating a clean `.xlsx` / `.csv` attendance sheet cross-referencing self-check-ins against the photo headcount.
-* **Verdict:** **Selected** — Hybrid approach combining a mobile QR web check-in (matching against the 102-student roster) + Vision-LLM photo verification + `openpyxl` spreadsheet export.
+1. **Classical Computer Vision — OpenCV Haar Cascade (`haarcascade_frontalface_default.xml`) [Benchmarked Locally]**
+   * **Real-Life Test Result:** Detected only **6 students** in the tiered lecture hall (~16% recall compared to Vision-LLM).
+   * **Failure Analysis:** Classical feature-based detectors fail heavily in university lecture halls due to desk/laptop occlusions, side/downward head angles, distance in upper tiered rows, and overhead lighting.
+   * **Artifact:** Saved output image with bounding boxes in `/samples/haar_result.jpg`.
+2. **Multimodal Vision-LLM — Gemini (`gemini-3.8-flash` with `gemini-3.5-flash` automatic fallback) [Benchmarked Locally]**
+   * **Real-Life Test Result:** Detected **37 students** sitting in the tiered rows of the classroom (`experiment_vision.py`).
+   * **Resilience & Accuracy:** Understands classroom spatial context, counts partially occluded students in back rows without custom training or local GPUs, and gracefully handles transient API `503` load spikes via model fallback.
+3. **Student Self Check-In & Spreadsheet Export — FastAPI + OpenPyXL**
+   * **Evaluation:** Built around the provided `courseid_130158_participants` roster (102 enrolled students) to export attendance logs directly into `.xlsx` / `.csv` format.
 
 ---
 
